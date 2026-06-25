@@ -1,0 +1,24 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: aihr-httproute
+  namespace: aihr
+spec:
+  parentRefs:
+  - name: web-gateway
+    namespace: default
+  hostnames:
+  - aihr.nova.net.cn
+  rules:
+  # 1. API 请求路由到后端
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /api
+    backendRefs:
+    - name: aihr-backend-service
+      port: 8000
+  # 2. 其余所有流量路由到前端
+  - backendRefs:
+    - name: aihr-frontend-service
+      port: 80

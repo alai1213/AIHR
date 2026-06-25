@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aihr-config
+  namespace: aihr
+data:
+  # 连你 K8s 集群内已有的 Redis 服务名和端口 (以第一路和第二路db为例)
+  CELERY_BROKER_URL: "redis://redis:6379/0"
+  CELERY_RESULT_BACKEND: "redis://redis:6379/1"
+  ACCESS_TOKEN_EXPIRE_MINUTES: "1440"
+  DATABASE_URL: "sqlite:////data/database/hr_ai.db" # 将SQLite路径放到持久化挂载目录下
+  # 默认嵌入模型配置（如果不在页面配置，可以使用此Fallback）
+  EMBEDDING_BASE_URL: "https://api.siliconflow.cn/v1"
+  EMBEDDING_MODEL: "Qwen/Qwen3-VL-Embedding-8B"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: aihr-secret
+  namespace: aihr
+type: Opaque
+stringData:
+  SECRET_KEY: "iZFEljxKnpR0AGQKqUhBVo3Y6ovM8oqRlN1WucvQrYY"
+  ENCRYPTION_KEY: "7G5qhKHXpj_tPNCvTfioemyjo9m-vDcIUe4mWdW5REA"
+  EMBEDDING_API_KEY: "sk-fe154e92d9a3445484a532629a0d1711" # 如果用本地Ollama可以填ollama

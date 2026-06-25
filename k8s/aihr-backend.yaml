@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aihr-api
+  namespace: aihr
+spec:
+  replicas: 1 # 涉及SQLite单写锁，API暂时建议1副本，若改用MariaDB可扩容
+  selector:
+    matchLabels:
+      app: aihr-api
+  template:
+    metadata:
+      labels:
+        app: aihr-api
+    spec:
+      containers:
+      - name: api
+        image: harbor-test.nova.net.cn/hr_ats/aihrbackend:20260623-142131 # 替换为你的Harbor后端镜像
+        # 严格执行README推荐的启动命令
+        command: ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+        envFrom:
+        - configMapRef:
+            name: aihr-config
+        - secretRef:
+            name: aihr-secret
+        ports:
+        - containerPort: 8000
+          name: api-port
+        volumeMounts:
+        - name: data-storage
+          mountPath: /data/database
+          subPath: database
+        - name: data-storage
+          mountPath: /app/chroma_db # 对应项目向量路径
+          subPath: chroma_db
+        - name: data-storage
+          mountPath: /app/uploads # 对应项目上传路径
+          subPath: uploads
+      volumes:
+      - name: data-storage
+        persistentVolumeClaim:
+          claimName: aihr-data-pvc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aihr-celery-worker
+  namespace: aihr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aihr-celery-worker
+  template:
+    metadata:
+      labels:
+        app: aihr-celery-worker
+    spec:
+      containers:
+      - name: worker
+        image: harbor-test.nova.net.cn/hr_ats/aihrbackend:20260623-142131 # 复用同一个后端镜像
+        # 严格执行README要求的Celery启动命令
+        command: ["celery", "-A", "app.tasks", "worker", "--loglevel=info", "--pool=solo"]
+        envFrom:
+        - configMapRef:
+            name: aihr-config
+        - secretRef:
+            name: aihr-secret
+        volumeMounts: # Worker同样需要处理简历和向量，挂载相同路径
+        - name: data-storage
+          mountPath: /data/database
+          subPath: database
+        - name: data-storage
+          mountPath: /app/chroma_db
+          subPath: chroma_db
+        - name: data-storage
+          mountPath: /app/uploads
+          subPath: uploads
+      volumes:
+      - name: data-storage
+        persistentVolumeClaim:
+          claimName: aihr-data-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aihr-backend-service
+  namespace: aihr
+spec:
+  ports:
+  - port: 8000
+    targetPort: 8000
+    name: http
+  selector:
+    app: aihr-api

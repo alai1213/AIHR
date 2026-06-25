@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aihr-frontend
+  namespace: aihr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aihr-frontend
+  template:
+    metadata:
+      labels:
+        app: aihr-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: harbor-test.nova.net.cn/hr_ats/aihrfrontend:20260623-120600 # 替换为你的Harbor前端镜像
+        ports:
+        - containerPort: 80 # 或者是你前端Docker打包时指定的端口
+          name: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aihr-frontend-service
+  namespace: aihr
+spec:
+  ports:
+  - port: 80
+    targetPort: 80
+  selector:
+    app: aihr-frontend
